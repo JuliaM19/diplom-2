@@ -1,0 +1,74 @@
+package praktikum;
+
+import org.apache.http.HttpStatus;
+import org.hamcrest.Matchers;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import praktikum.api.StellarBurgersApi;
+import praktikum.model.UserRequest;
+
+import static org.hamcrest.CoreMatchers.notNullValue;
+
+@RunWith(Parameterized.class)
+public class CreateUserTest {
+
+    private final StellarBurgersApi api = new StellarBurgersApi();
+    private final UserRequest userRequest;
+
+    public CreateUserTest(UserRequest userRequest) {
+        this.userRequest = userRequest;
+    }
+
+    @Parameterized.Parameters(name = "Тестовые данные: {0}")
+    public static Object[][] getTestData() {
+        return new Object[][]{{Utils.createRandomUser()}};
+    }
+
+    @Test
+    public void testFieldsValidation() {
+        UserRequest userWithoutPass = new UserRequest();
+        userWithoutPass.setName(userRequest.getName());
+        userWithoutPass.setEmail(userRequest.getEmail());
+
+        api.createUser(userWithoutPass).then().statusCode(HttpStatus.SC_FORBIDDEN);
+
+        UserRequest userWithoutEmail = new UserRequest();
+        userWithoutEmail.setName(userRequest.getName());
+        userWithoutEmail.setPassword(userRequest.getPassword());
+
+        api.createUser(userWithoutEmail).then().statusCode(HttpStatus.SC_FORBIDDEN);
+
+        UserRequest userWithoutName = new UserRequest();
+        userWithoutName.setPassword(userRequest.getPassword());
+        userWithoutName.setEmail(userRequest.getEmail());
+
+        api.createUser(userWithoutName).then().statusCode(HttpStatus.SC_FORBIDDEN);
+    }
+
+    @Test
+    public void testCreateUserWithoutErrors() {
+        api.createUser(userRequest).then().statusCode(HttpStatus.SC_OK).and().body("refreshToken", notNullValue()).and().body("accessToken", Matchers.containsString("Bearer"));
+
+        String accessToken = api.getAccessToken(Utils.createAuthorizationRequest(userRequest));
+        api.deleteUser(accessToken);
+    }
+
+    @Test
+    public void testCreateUserWithAlreadyCreatedOne() {
+        api.createUser(userRequest);
+
+        api.createUser(userRequest).then().statusCode(HttpStatus.SC_FORBIDDEN);
+
+        String accessToken = api.getAccessToken(Utils.createAuthorizationRequest(userRequest));
+        api.deleteUser(accessToken);
+    }
+
+    @Test
+    public void deleteUserTest() {
+        api.createUser(userRequest);
+
+        String accessToken = api.getAccessToken(Utils.createAuthorizationRequest(userRequest));
+        api.deleteUser(accessToken).then().statusCode(HttpStatus.SC_ACCEPTED);
+    }
+}
