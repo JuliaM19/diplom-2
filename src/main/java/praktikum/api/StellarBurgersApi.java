@@ -45,15 +45,11 @@ public class StellarBurgersApi {
 
     @Step("Удаление пользователя")
     public Response deleteUser(String accessToken) {
+        Header authHeader = new Header(AUTHORIZATION, accessToken);
         return given()
-                .header(AUTHORIZATION, accessToken)
+                .header(authHeader)
                 .when()
                 .delete(Paths.AUTH_USER_PATH);
-    }
-
-    public String getAccessToken(AuthorizationRequest authorizationRequest) {
-        Response user = loginUser(authorizationRequest);
-        return user.getBody().jsonPath().getString("accessToken");
     }
 
     @Step("Изменение данных пользователя")
@@ -68,7 +64,7 @@ public class StellarBurgersApi {
 
     public List<Ingredient> getIngredients() {
         Response ingredients = given()
-                .get("/ingredients");
+                .get(Paths.INGREDIENTS_PATH);
         return ingredients
                 .getBody()
                 .jsonPath()

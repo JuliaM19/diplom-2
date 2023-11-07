@@ -1,9 +1,12 @@
 package praktikum;
 
 
+import io.restassured.response.Response;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.HttpStatus;
 import org.hamcrest.Matchers;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -16,6 +19,7 @@ public class LoginUserTest {
 
     private final StellarBurgersApi api;
     private final UserRequest userRequest;
+    private String accessToken;
 
     public LoginUserTest(UserRequest userRequest) {
         this.api = new StellarBurgersApi();
@@ -30,23 +34,23 @@ public class LoginUserTest {
         };
     }
 
+    @Before
+    public void setUp() throws Exception {
+        Response user = api.createUser(userRequest);
+        accessToken = user.getBody().jsonPath().getString("accessToken");
+    }
+
     @Test
     public void testUserLogin() {
-        api.createUser(userRequest);
         AuthorizationRequest authorizationRequest = Utils.createAuthorizationRequest(userRequest);
 
         api.loginUser(authorizationRequest)
                 .then()
                 .statusCode(HttpStatus.SC_OK);
-
-        String accessToken = api.getAccessToken(authorizationRequest);
-        api.deleteUser(accessToken);
     }
 
     @Test
     public void testUserLoginWithWrongPassword() {
-        api.createUser(userRequest);
-
         AuthorizationRequest authorizationRequest = new AuthorizationRequest(
                 RandomStringUtils.randomAlphabetic(5),
                 userRequest.getPassword()
@@ -57,8 +61,10 @@ public class LoginUserTest {
                 .statusCode(HttpStatus.SC_UNAUTHORIZED)
                 .and()
                 .body("message", Matchers.equalTo("email or password are incorrect"));
+    }
 
-        String accessToken = api.getAccessToken(Utils.createAuthorizationRequest(userRequest));
+    @After
+    public void tearDown() {
         api.deleteUser(accessToken);
     }
 }
